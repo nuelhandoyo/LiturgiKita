@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+      <stop offset="0%" stop-color="#6C3483" />
+      <stop offset="100%" stop-color="#4A235A" />
+    </radialGradient>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1C40F" />
+      <stop offset="50%" stop-color="#F39C12" />
+      <stop offset="100%" stop-color="#D68910" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg-grad)" stroke="#F1C40F" stroke-width="8" filter="url(#shadow)" />
+
+  <!-- Radiating light rays -->
+  <g opacity="0.15">
+    <path d="M256,40 L256,472 M40,256 L472,256 M103,103 L409,409 M103,409 L409,103" stroke="#FFF" stroke-width="6" stroke-dasharray="10, 15" />
+    <circle cx="256" cy="256" r="140" fill="none" stroke="#FFF" stroke-width="4" stroke-dasharray="5, 10" />
+  </g>
+
+  <!-- Golden Liturgical Cross -->
+  <g filter="url(#shadow)">
+    <!-- Vertical Bar -->
+    <path d="M236,100 L276,100 L276,412 L236,412 Z" fill="url(#gold-grad)" rx="4" />
+    <!-- Horizontal Bar -->
+    <path d="M140,190 L372,190 L372,230 L140,230 Z" fill="url(#gold-grad)" rx="4" />
+    
+    <!-- Cross decorative end pieces (flory style) -->
+    <!-- Top -->
+    <path d="M226,100 L286,100 L256,70 Z" fill="url(#gold-grad)" />
+    <!-- Bottom -->
+    <path d="M226,412 L286,412 L256,442 Z" fill="url(#gold-grad)" />
+    <!-- Left -->
+    <path d="M140,180 L140,240 L110,210 Z" fill="url(#gold-grad)" />
+    <!-- Right -->
+    <path d="M372,180 M372,240 L402,210 Z" fill="url(#gold-grad)" />
+    <path d="M372,180 L372,240 L402,210 Z" fill="url(#gold-grad)" />
+  </g>
+
+  <!-- Alpha and Omega -->
+  <text x="175" y="222" font-family="'Playfair Display', serif, system-ui" font-size="28" font-weight="bold" fill="#FFF" opacity="0.8">Α</text>
+  <text x="315" y="222" font-family="'Playfair Display', serif, system-ui" font-size="28" font-weight="bold" fill="#FFF" opacity="0.8">Ω</text>
+
+  <!-- Hovering Eucharistic Host or Holy Dove -->
+  <!-- Let's draw a beautiful stylised white Dove of Peace swooping down -->
+  <g filter="url(#shadow)">
+    <path d="M256,160 
+             C230,175 200,170 180,185 
+             C205,190 225,195 240,205 
+             C243,212 240,225 248,230 
+             C252,222 254,212 256,208
+             C258,212 260,222 264,230
+             C272,225 269,212 272,205
+             C287,195 307,190 332,185
+             C312,170 282,175 256,160 Z" 
+          fill="#FFFFFF" />
+    <circle cx="256" cy="180" r="4" fill="#E74C3C" />
+  </g>
+</svg>

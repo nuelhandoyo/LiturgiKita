@@ -1,0 +1,6 @@
+{
+  "name": "Kalender Liturgi Katolik",
+  "description": "Aplikasi Kalender Liturgi Katolik lengkap dengan bacaan harian, renungan audio Pray As You Go, kutipan Katolik, dan fitur PWA offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
