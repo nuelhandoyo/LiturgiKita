@@ -191,117 +191,66 @@ export default function App() {
       <main className="flex-1 min-h-0 mx-auto w-full max-w-6xl px-4 py-4 overflow-y-auto lg:overflow-hidden flex flex-col">
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
           
-          {/* LEFT PANEL: Detailed Liturgical Info (Width 5 on LG) */}
-          <div className="lg:col-span-5 flex flex-col h-full min-h-0 space-y-3.5">
-            <div className="flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4.5 w-4.5 text-emerald-600" />
-                <h2 className="font-serif text-base font-bold text-stone-800">Detail Hari Liturgi</h2>
-              </div>
-              
-              {/* Reset to Today Action Button */}
-              {selectedDay && selectedDay.dateStr !== todayStr && (
-                <button
-                  onClick={handleBackToToday}
-                  className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[10px] font-bold text-stone-700 hover:bg-stone-50 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                >
-                  Kembali ke Hari Ini
-                </button>
-              )}
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-3.5 pr-1 scrollbar-thin">
-              <AnimatePresence mode="wait">
-                {selectedDay ? (
-                  <motion.div
-                    key={selectedDay.dateStr}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.18 }}
-                    className="space-y-3.5"
-                  >
-                    {/* Identity Card */}
-                    <div className={`bento-card border-l-[6px] ${currentStyle.border} bg-white p-4 space-y-2.5 shadow-2xs`}>
-                      <div>
-                        <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-stone-400 block">
-                          {selectedDay.season} &bull; {selectedDay.gradeLabel}
-                        </span>
-                        <h3 className="font-serif text-base font-bold leading-snug text-stone-900 mt-0.5">{selectedDay.title}</h3>
-                        <p className="font-sans text-[11px] text-stone-500 mt-1 font-medium">{formattedSelectedDate}</p>
-                      </div>
-
-                      {/* Color Legend for active date */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
-                        <span className={`h-3.5 w-3.5 rounded-full border border-stone-300 ${selectedDay.color === 'white' ? 'bg-white' : selectedDay.color === 'gold' ? 'bg-[#F1C40F]' : selectedDay.color === 'green' ? 'bg-emerald-600' : selectedDay.color === 'purple' ? 'bg-purple-700' : selectedDay.color === 'red' ? 'bg-red-600' : 'bg-rose-400'}`} />
-                        <span className="font-sans text-[10px] font-semibold text-stone-600">{currentStyle.label}</span>
-                      </div>
-                    </div>
-
-                    {/* Saint celebration warning badge if applicable (only if not redundant with the main title to prevent repeated cards) */}
-                    {selectedDay.feastName && 
-                     !selectedDay.title.toLowerCase().includes(selectedDay.feastName.toLowerCase()) && 
-                     !selectedDay.feastName.toLowerCase().includes(selectedDay.title.toLowerCase()) && (
-                      <div className="bento-card bg-amber-50/40 p-3.5 border border-amber-200/50 flex items-start gap-2.5 shadow-3xs">
-                        <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-amber-800">Perayaan / Peringatan</span>
-                          <p className="font-serif text-xs font-bold text-stone-800 mt-0.5">{selectedDay.feastName}</p>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ) : (
-                  <div className="bento-card bg-white p-6 text-center text-stone-500 text-xs font-sans shadow-3xs">
-                    Pilihlah salah satu hari pada kalender untuk melihat detail liturgi.
-                  </div>
-                )}
-              </AnimatePresence>
-
-              {/* Inspirational Quote Card embedded beautifully inside the scrollable left panel */}
-              <QuoteCard />
-            </div>
-          </div>
-
-          {/* RIGHT PANEL: Complete Calendar Month Grid & Legend (Width 7 on LG) */}
+          {/* LEFT PANEL: Complete Calendar Month Grid & Legend (Width 7 on LG) */}
           <div className="lg:col-span-7 flex flex-col h-full min-h-0 space-y-3.5">
             
-            {/* Calendar Controller header card */}
-            <div className="bento-card py-2.5 px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-stone-200/80 shadow-3xs shrink-0">
-              <div>
-                <span className="font-sans text-[9px] font-extrabold uppercase tracking-widest text-emerald-600 flex items-center gap-1">
-                  <CalendarIcon className="h-3 w-3" />
-                  Kalender Liturgi 2026
+            {/* Combined Calendar Controller & Active Liturgical Day Header Card */}
+            <div className={`bento-card border-l-[6px] ${currentStyle.border} p-4 bg-white border border-stone-200/80 shadow-3xs shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+              {/* Active Day Info */}
+              <div className="min-w-0 flex-1">
+                <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-stone-400 block">
+                  {selectedDay ? `${selectedDay.season} • ${selectedDay.gradeLabel}` : 'Masa Biasa • Ferial'}
                 </span>
-                <h2 className="font-serif text-lg font-black text-stone-800 leading-none mt-0.5">
-                  {MONTH_NAMES[viewMonth]} {viewYear}
-                </h2>
+                <h3 className="font-serif text-base md:text-lg font-black leading-snug text-stone-900 mt-0.5">
+                  {selectedDay ? selectedDay.title : 'Hari Liturgi'}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                  <p className="font-sans text-[11px] text-stone-500 font-semibold">{formattedSelectedDate}</p>
+                  <span className="inline-block h-1 w-1 rounded-full bg-stone-300" />
+                  <div className="flex items-center gap-1">
+                    <span className={`h-2.5 w-2.5 rounded-full border border-stone-300 ${selectedDay?.color === 'white' ? 'bg-white' : selectedDay?.color === 'gold' ? 'bg-[#F1C40F]' : selectedDay?.color === 'green' ? 'bg-emerald-600' : selectedDay?.color === 'purple' ? 'bg-purple-700' : selectedDay?.color === 'red' ? 'bg-red-600' : 'bg-rose-400'}`} />
+                    <span className="font-sans text-[10px] font-bold text-stone-600">{currentStyle.label}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Navigation Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleBackToToday}
-                  className="rounded-full border border-stone-200 bg-white px-3 py-1.5 font-sans text-[10px] font-bold text-stone-700 shadow-3xs transition-all hover:bg-stone-50 active:scale-95 cursor-pointer"
-                >
-                  Hari Ini
-                </button>
-                
-                <div className="flex items-center rounded-full border border-stone-200 bg-white shadow-3xs">
+              {/* Calendar Controller */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-stone-100 md:pl-4 md:border-l md:border-stone-200/60 shrink-0">
+                <div className="text-left md:text-right shrink-0">
+                  <span className="font-sans text-[9px] font-extrabold uppercase tracking-widest text-emerald-600 flex items-center md:justify-end gap-1">
+                    <CalendarIcon className="h-3 w-3" />
+                    Kalender Liturgi 2026
+                  </span>
+                  <h2 className="font-serif text-base font-black text-stone-800 leading-none mt-0.5">
+                    {MONTH_NAMES[viewMonth]} {viewYear}
+                  </h2>
+                </div>
+
+                {/* Navigation Actions */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={handlePrevMonth}
-                    className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-50 rounded-l-full border-r border-stone-100 cursor-pointer"
-                    aria-label="Bulan sebelumnya"
+                    onClick={handleBackToToday}
+                    className="rounded-full border border-stone-200 bg-white px-3 py-1.5 font-sans text-[10px] font-bold text-stone-700 shadow-3xs transition-all hover:bg-stone-50 active:scale-95 cursor-pointer"
                   >
-                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Hari Ini
                   </button>
-                  <button
-                    onClick={handleNextMonth}
-                    className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-50 rounded-r-full cursor-pointer"
-                    aria-label="Bulan berikutnya"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
+                  
+                  <div className="flex items-center rounded-full border border-stone-200 bg-white shadow-3xs">
+                    <button
+                      onClick={handlePrevMonth}
+                      className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-50 rounded-l-full border-r border-stone-100 cursor-pointer"
+                      aria-label="Bulan sebelumnya"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={handleNextMonth}
+                      className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-50 rounded-r-full cursor-pointer"
+                      aria-label="Bulan berikutnya"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -409,10 +358,67 @@ export default function App() {
             <div className="bento-card bg-stone-50/60 p-2.5 text-[10px] leading-relaxed text-stone-600 flex items-start gap-2 border border-stone-200/50 shrink-0">
               <Info className="h-3.5 w-3.5 shrink-0 text-stone-500 mt-0.5" />
               <p>
-                <strong>Informasi Kalender:</strong> Penanggalan Liturgi Romawi disesuaikan untuk tahun 2026. Klik pada salah satu kotak tanggal untuk memperbarui informasi detail hari liturgi di panel sebelah kiri secara interaktif.
+                <strong>Informasi Kalender:</strong> Penanggalan Liturgi Romawi disesuaikan untuk tahun 2026. Klik pada salah satu kotak tanggal untuk memperbarui informasi detail hari liturgi di panel sebelah kanan secara interaktif.
               </p>
             </div>
 
+          </div>
+
+          {/* RIGHT PANEL: Detailed Liturgical Info (Width 5 on LG) */}
+          <div className="lg:col-span-5 flex flex-col h-full min-h-0 space-y-3.5">
+            <div className="flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4.5 w-4.5 text-emerald-600" />
+                <h2 className="font-serif text-base font-bold text-stone-800">Detail Hari Liturgi</h2>
+              </div>
+              
+              {/* Reset to Today Action Button */}
+              {selectedDay && selectedDay.dateStr !== todayStr && (
+                <button
+                  onClick={handleBackToToday}
+                  className="rounded-full bg-white border border-stone-200 px-2.5 py-1 text-[10px] font-bold text-stone-700 hover:bg-stone-50 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  Kembali ke Hari Ini
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-3.5 pr-1 scrollbar-thin">
+              {/* Inspirational Quote Card at the very top left */}
+              <QuoteCard />
+
+              <AnimatePresence mode="wait">
+                {selectedDay ? (
+                  <motion.div
+                    key={selectedDay.dateStr}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                    className="space-y-3.5"
+                  >
+                    {/* Saint celebration warning badge if applicable (only if not redundant with the main title to prevent repeated cards) */}
+                    {selectedDay.feastName && 
+                     !selectedDay.title.toLowerCase().includes(selectedDay.feastName.toLowerCase()) && 
+                     !selectedDay.feastName.toLowerCase().includes(selectedDay.title.toLowerCase()) && (
+                      <div className="bento-card bg-amber-50/40 p-3.5 border border-amber-200/50 flex items-start gap-2.5 shadow-3xs">
+                        <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-amber-800">Perayaan / Peringatan</span>
+                          <p className="font-serif text-xs font-bold text-stone-800 mt-0.5">{selectedDay.feastName}</p>
+                        </div>
+                      </div>
+                    )}
+
+
+                  </motion.div>
+                ) : (
+                  <div className="bento-card bg-white p-6 text-center text-stone-500 text-xs font-sans shadow-3xs">
+                    Pilihlah salah satu hari pada kalender untuk melihat detail liturgi.
+                  </div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
         </div>
