@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // Current local date anchor in 2026
-  const anchorDate = new Date(2026, 5, 26); // June 26, 2026
+  // Current local date anchor
+  const anchorDate = new Date();
   const todayStr = toDateStr(anchorDate);
 
   // States
