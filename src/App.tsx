@@ -1182,7 +1182,7 @@ export default function App() {
 
                 {perayaanBulanIni.length > 0 ? (
                   <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1 lit-scrollbar">
-                    {perayaanBulanIni.map(({ dateStr, dayNum, celebration }) => {
+                    {perayaanBulanIni.map(({ dateStr, dayNum, celebration, readingsPreview }) => {
                       const w = infoWarna(celebration.colour);
                       const r = infoRank(celebration);
                       const isSelected = (dateStr === selectedDateStr);
