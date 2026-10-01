@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ImanKatolikDayData, ImanKatolikReadingItem } from '../data/imankatolik';
+import { 
+  ImanKatolikDayData, 
+  ImanKatolikReadingItem,
+  fetchImanKatolikDay,
+  getPrebuiltDay
+} from '../data/imankatolik';
 import { UniversalisMassData, decodeHtmlEntities } from '../data/universalis';
 import { 
   X, 
@@ -15,7 +20,9 @@ import {
   VolumeX,
   Church,
   Flame,
-  Bookmark
+  Bookmark,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface ReadingsModalProps {
@@ -28,6 +35,8 @@ interface ReadingsModalProps {
   universalisData?: UniversalisMassData | null;
   initialTab?: string;
   isLoading?: boolean;
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
 }
 
 export default function ReadingsModal({
@@ -39,7 +48,9 @@ export default function ReadingsModal({
   imanKatolikData,
   universalisData,
   initialTab = 'all',
-  isLoading = false
+  isLoading = false,
+  onPrevDay,
+  onNextDay
 }: ReadingsModalProps) {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
@@ -47,19 +58,35 @@ export default function ReadingsModal({
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [showVerseNumbers, setShowVerseNumbers] = useState<boolean>(true);
 
-  // Self-managed modal data to guarantee exact matching with dateStr
-  const [modalData, setModalData] = useState<ImanKatolikDayData | null>(
-    imanKatolikData && imanKatolikData.date === dateStr ? imanKatolikData : null
-  );
+  // Self-managed modal data prioritizing instant prebuilt/cached data
+  const [modalData, setModalData] = useState<ImanKatolikDayData | null>(() => {
+    return (imanKatolikData && imanKatolikData.date === dateStr) 
+      ? imanKatolikData 
+      : getPrebuiltDay(dateStr);
+  });
   const [isModalLoading, setIsModalLoading] = useState<boolean>(isLoading);
 
   useEffect(() => {
     if (!isOpen || !dateStr) return;
 
-    if (imanKatolikData && imanKatolikData.date === dateStr) {
+    const prebuilt = getPrebuiltDay(dateStr);
+
+    if (imanKatolikData && imanKatolikData.date === dateStr && imanKatolikData.readings?.some(r => r.verses?.length > 0)) {
       setModalData(imanKatolikData);
       setIsModalLoading(false);
       return;
+    }
+
+    if (prebuilt && prebuilt.readings?.some(r => r.verses?.length > 0)) {
+      setModalData(prebuilt);
+      setIsModalLoading(false);
+      return;
+    }
+
+    if (prebuilt) {
+      setModalData(prebuilt);
+    } else if (imanKatolikData && imanKatolikData.date === dateStr) {
+      setModalData(imanKatolikData);
     }
 
     // Auto-fetch for the current dateStr if not provided or stale
@@ -225,9 +252,31 @@ export default function ReadingsModal({
                   <Flame className="w-3 h-3" />
                   Warna: {warnaLiturgi}
                 </span>
-                <span className="text-xs text-[#8A8378] font-medium hidden sm:inline">
-                  {dateFormatted}
-                </span>
+                <div className="inline-flex items-center gap-1 bg-[#F5F2EC] px-2 py-0.5 rounded-full border border-[#E8E2D6] text-xs">
+                  {onPrevDay && (
+                    <button
+                      type="button"
+                      onClick={onPrevDay}
+                      className="p-0.5 hover:text-[#7A2E39] text-[#5D5343] transition-colors cursor-pointer"
+                      title="Hari Sebelumnya"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <span className="text-xs text-[#5D5343] font-semibold px-1">
+                    {dateFormatted}
+                  </span>
+                  {onNextDay && (
+                    <button
+                      type="button"
+                      onClick={onNextDay}
+                      className="p-0.5 hover:text-[#7A2E39] text-[#5D5343] transition-colors cursor-pointer"
+                      title="Hari Berikutnya"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <h2 className="text-lg sm:text-xl font-bold font-serif text-[#1C2B3A] leading-snug">
                 {celebrationName}

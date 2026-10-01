@@ -57,9 +57,27 @@ export interface ImanKatolikMonthData {
   days: Record<string, ImanKatolikMonthDay>; // keyed by 'YYYY-MM-DD'
 }
 
-// In-memory client cache
+import { october2026Data } from './imankatolik-october-2026.ts';
+
+// In-memory client cache initialized with pre-built data
 const dayCache = new Map<string, ImanKatolikDayData>();
 const monthCache = new Map<string, ImanKatolikMonthData>();
+
+// Seed October 2026 immediately
+monthCache.set('2026-10', october2026Data.monthData as any);
+Object.entries(october2026Data.daysData).forEach(([dStr, dData]) => {
+  dayCache.set(dStr, dData as any);
+});
+
+export function getPrebuiltDay(dateStr: string): ImanKatolikDayData | null {
+  const normDate = normalizeDateStr(dateStr);
+  return dayCache.get(normDate) || null;
+}
+
+export function getPrebuiltMonth(year: number, month: number): ImanKatolikMonthData | null {
+  const key = `${year}-${String(month).padStart(2, '0')}`;
+  return monthCache.get(key) || null;
+}
 
 export function normalizeDateStr(dateStr: string): string {
   if (!dateStr) return '';

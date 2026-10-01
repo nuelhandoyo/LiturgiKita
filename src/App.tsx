@@ -23,6 +23,8 @@ import {
 import {
   fetchImanKatolikDay,
   fetchImanKatolikMonth,
+  getPrebuiltDay,
+  getPrebuiltMonth,
   ImanKatolikDayData,
   ImanKatolikMonthData
 } from './data/imankatolik';
@@ -74,8 +76,12 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   // Iman Katolik readings state (imankatolik.or.id)
-  const [imanKatolikData, setImanKatolikData] = useState<ImanKatolikDayData | null>(null);
-  const [imanKatolikMonth, setImanKatolikMonth] = useState<ImanKatolikMonthData | null>(null);
+  const [imanKatolikMonth, setImanKatolikMonth] = useState<ImanKatolikMonthData | null>(() => {
+    return getPrebuiltMonth(todayInfo.year, todayInfo.month + 1);
+  });
+  const [imanKatolikData, setImanKatolikData] = useState<ImanKatolikDayData | null>(() => {
+    return getPrebuiltDay(todayInfo.dateStr);
+  });
   const [isLoadingImanKatolik, setIsLoadingImanKatolik] = useState<boolean>(false);
 
   // Universalis readings state (from kochan.ski/jsonp.html source)
@@ -125,6 +131,12 @@ export default function App() {
         }
       });
 
+    // Check prebuilt month first
+    const prebuiltMonth = getPrebuiltMonth(currentYear, currentMonth + 1);
+    if (prebuiltMonth) {
+      setImanKatolikMonth(prebuiltMonth);
+    }
+
     // Also fetch month calendar from imankatolik.or.id
     fetchImanKatolikMonth(currentYear, currentMonth + 1)
       .then((data) => {
@@ -144,10 +156,17 @@ export default function App() {
     if (!selectedDateStr) return;
     let isCancelled = false;
 
-    // Immediately clear previous day data so stale data is never shown
-    setImanKatolikData(null);
-    setIsLoadingImanKatolik(true);
-    setIsLoadingReadings(true);
+    // Immediately load prebuilt/cached day data so the card NEVER shows "Belum tersedia"
+    const prebuilt = getPrebuiltDay(selectedDateStr);
+    if (prebuilt) {
+      setImanKatolikData(prebuilt);
+      setIsLoadingImanKatolik(false);
+      setIsLoadingReadings(false);
+    } else {
+      setImanKatolikData(null);
+      setIsLoadingImanKatolik(true);
+      setIsLoadingReadings(true);
+    }
 
     fetchImanKatolikDay(selectedDateStr)
       .then((data) => {
@@ -492,7 +511,65 @@ export default function App() {
       dateStr: string;
       dayNum: number;
       celebration: CalApiCelebration;
+      readingsPreview?: string;
     }> = [];
+
+    // Prioritize days from Iman Katolik month calendar
+    if (imanKatolikMonth && imanKatolikMonth.days && Object.keys(imanKatolikMonth.days).length > 0) {
+      Object.keys(imanKatolikMonth.days).sort().forEach((dateKey) => {
+        const imk = imanKatolikMonth.days[dateKey];
+        if (!imk) return;
+        const dayNum = imk.day || parseInt(dateKey.slice(8), 10);
+        const pLower = (imk.perayaan || '').toLowerCase();
+        
+        const isImportant = pLower.includes('hari raya') || 
+                            pLower.includes('pesta') || 
+                            pLower.includes('perayaan wajib') || 
+                            pLower.includes('minggu') || 
+                            pLower.includes('sabtu imam') ||
+                            pLower.includes('peringatan') ||
+                            pLower.includes('st.') ||
+                            pLower.includes('santa') ||
+                            pLower.includes('santo');
+
+        const entri = activeMonthMap[dateKey];
+        const calApiC = entri ? perayaanPenting(entri) : null;
+
+        if (isImportant || calApiC) {
+          const w = (imk.warnaLiturgi || '').toLowerCase();
+          const colour = w.includes('putih') ? 'white' :
+                         w.includes('merah muda') ? 'rose' :
+                         w.includes('merah') ? 'red' :
+                         w.includes('ungu') ? 'violet' : 'green';
+
+          let rank = 'ferial';
+          if (pLower.includes('hari raya')) rank = 'solemnity';
+          else if (pLower.includes('pesta')) rank = 'feast';
+          else if (pLower.includes('perayaan wajib') || pLower.includes('peringatan')) rank = 'memorial';
+          else if (pLower.includes('minggu')) rank = 'sunday';
+
+          const rSum = imk.readingsSummary || {};
+          const previewParts: string[] = [];
+          if (rSum.r1) previewParts.push(rSum.r1);
+          if (rSum.g) previewParts.push(rSum.g);
+          const readingsPreview = previewParts.join(' · ');
+
+          rows.push({
+            dateStr: dateKey,
+            dayNum,
+            celebration: {
+              title: imk.perayaan.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim(),
+              colour,
+              rank,
+              rank_num: rank === 'solemnity' ? 1.0 : rank === 'feast' ? 2.0 : 3.0
+            },
+            readingsPreview
+          });
+        }
+      });
+
+      if (rows.length > 0) return rows;
+    }
 
     Object.keys(activeMonthMap).sort().forEach((dateKey) => {
       const entri = activeMonthMap[dateKey];
@@ -509,7 +586,7 @@ export default function App() {
     });
 
     return rows;
-  }, [activeMonthMap]);
+  }, [activeMonthMap, imanKatolikMonth]);
 
   // Formatted date string for selected date
   const formattedSelectedDate = useMemo(() => {
@@ -1139,6 +1216,11 @@ export default function App() {
                                 {r.label}
                               </span>
                             </p>
+                            {readingsPreview && (
+                              <p className={`text-[11px] font-mono mt-0.5 truncate ${isSelected ? 'text-[#E3C177]' : 'text-[#8A8378]'}`}>
+                                📖 {readingsPreview}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
@@ -1182,6 +1264,8 @@ export default function App() {
         universalisData={universalisData}
         initialTab={modalInitialTab}
         isLoading={isLoadingImanKatolik}
+        onPrevDay={handlePrevDay}
+        onNextDay={handleNextDay}
       />
 
       {/* Footer */}
