@@ -144,12 +144,14 @@ export default function App() {
     if (!selectedDateStr) return;
     let isCancelled = false;
 
+    // Immediately clear previous day data so stale data is never shown
+    setImanKatolikData(null);
     setIsLoadingImanKatolik(true);
     setIsLoadingReadings(true);
 
     fetchImanKatolikDay(selectedDateStr)
       .then((data) => {
-        if (!isCancelled) {
+        if (!isCancelled && data && data.date === selectedDateStr) {
           setImanKatolikData(data);
         }
       })
@@ -213,8 +215,11 @@ export default function App() {
     const primary = celebrations[0];
 
     // Priority: Iman Katolik Indonesian feast name > remote CalApi title > local day title
-    const imkDay = imanKatolikData || (selectedDateStr ? imanKatolikMonth?.days?.[selectedDateStr] : null);
-    const title = imkDay?.perayaan || primary?.title || selectedLocalDay?.feastName || selectedLocalDay?.title || 'Ferial';
+    const imkDay = (imanKatolikData && imanKatolikData.date === selectedDateStr) 
+      ? imanKatolikData 
+      : (selectedDateStr ? imanKatolikMonth?.days?.[selectedDateStr] : null);
+    const rawTitle = imkDay?.perayaan || primary?.title || selectedLocalDay?.feastName || selectedLocalDay?.title || 'Ferial';
+    const title = rawTitle.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
     
     // Rank info
     const rank = primary ? infoRank(primary) : {
@@ -253,14 +258,21 @@ export default function App() {
 
   // Unified readings info with priority on Iman Katolik (imankatolik.or.id)
   const readingsSummary = useMemo(() => {
-    // 1. Full data from Iman Katolik
-    if (imanKatolikData && imanKatolikData.readings.length > 0) {
-      const r1 = imanKatolikData.readings.find(r => r.type === 'bacaan_1');
-      const r1Alt = imanKatolikData.readings.find(r => r.type === 'bacaan_1_alt');
-      const ps = imanKatolikData.readings.find(r => r.type === 'mazmur');
-      const r2 = imanKatolikData.readings.find(r => r.type === 'bacaan_2');
-      const g = imanKatolikData.readings.find(r => r.type === 'injil');
-      const bco = imanKatolikData.readings.find(r => r.type === 'bco');
+    const activeImkDay = (imanKatolikData && imanKatolikData.date === selectedDateStr)
+      ? imanKatolikData
+      : null;
+    const monthDay = selectedDateStr ? imanKatolikMonth?.days?.[selectedDateStr] : null;
+
+    // 1. Full data with verses from Iman Katolik
+    if (activeImkDay && activeImkDay.readings && activeImkDay.readings.length > 0) {
+      const r1 = activeImkDay.readings.find(r => r.type === 'bacaan_1');
+      const r1Alt = activeImkDay.readings.find(r => r.type === 'bacaan_1_alt');
+      const ps = activeImkDay.readings.find(r => r.type === 'mazmur');
+      const r2 = activeImkDay.readings.find(r => r.type === 'bacaan_2');
+      const r2Alt = activeImkDay.readings.find(r => r.type === 'bacaan_2_alt');
+      const g = activeImkDay.readings.find(r => r.type === 'injil');
+      const gAlt = activeImkDay.readings.find(r => r.type === 'injil_alt');
+      const bco = activeImkDay.readings.find(r => r.type === 'bco');
 
       return {
         sourceType: 'imankatolik',
@@ -268,28 +280,40 @@ export default function App() {
         r1AltSource: r1Alt?.reference || '',
         psSource: ps?.reference || '',
         r2Source: r2?.reference || '',
+        r2AltSource: r2Alt?.reference || '',
         gSource: g?.reference || '',
+        gAltSource: gAlt?.reference || '',
         bcoSource: bco?.reference || '',
         r1Heading: '',
         r2Heading: '',
         gHeading: '',
-        hasFullText: true,
-        perayaan: imanKatolikData.perayaan,
-        warnaLiturgi: imanKatolikData.warnaLiturgi
+        hasFullText: activeImkDay.readings.some(r => r.verses && r.verses.length > 0),
+        perayaan: activeImkDay.perayaan,
+        warnaLiturgi: activeImkDay.warnaLiturgi
       };
     }
 
-    // 2. Month-level summary from Iman Katolik
-    const monthDay = selectedDateStr ? imanKatolikMonth?.days?.[selectedDateStr] : null;
-    if (monthDay && monthDay.readingsSummary) {
+    // 2. Immediate Month-level summary from Iman Katolik for ANY day of the month
+    if (monthDay && (monthDay.readingsSummary?.r1 || monthDay.readingsSummary?.g || (monthDay.readings && monthDay.readings.length > 0))) {
+      const r1 = monthDay.readingsSummary?.r1 || monthDay.readings?.find((r: any) => r.type === 'bacaan_1')?.reference || '';
+      const r1Alt = monthDay.readingsSummary?.r1_alt || monthDay.readings?.find((r: any) => r.type === 'bacaan_1_alt')?.reference || '';
+      const ps = monthDay.readingsSummary?.ps || monthDay.readings?.find((r: any) => r.type === 'mazmur')?.reference || '';
+      const r2 = monthDay.readingsSummary?.r2 || monthDay.readings?.find((r: any) => r.type === 'bacaan_2')?.reference || '';
+      const r2Alt = monthDay.readingsSummary?.r2_alt || monthDay.readings?.find((r: any) => r.type === 'bacaan_2_alt')?.reference || '';
+      const g = monthDay.readingsSummary?.g || monthDay.readings?.find((r: any) => r.type === 'injil')?.reference || '';
+      const gAlt = monthDay.readingsSummary?.g_alt || monthDay.readings?.find((r: any) => r.type === 'injil_alt')?.reference || '';
+      const bco = monthDay.readingsSummary?.bco || monthDay.readings?.find((r: any) => r.type === 'bco')?.reference || '';
+
       return {
         sourceType: 'imankatolik_summary',
-        r1Source: monthDay.readingsSummary.r1 || '',
-        r1AltSource: monthDay.readingsSummary.r1_alt || '',
-        psSource: monthDay.readingsSummary.ps || '',
-        r2Source: monthDay.readingsSummary.r2 || '',
-        gSource: monthDay.readingsSummary.g || '',
-        bcoSource: monthDay.readingsSummary.bco || '',
+        r1Source: r1,
+        r1AltSource: r1Alt,
+        psSource: ps,
+        r2Source: r2,
+        r2AltSource: r2Alt,
+        gSource: g,
+        gAltSource: gAlt,
+        bcoSource: bco,
         r1Heading: '',
         r2Heading: '',
         gHeading: '',
@@ -299,26 +323,7 @@ export default function App() {
       };
     }
 
-    // 3. Fallback for 2026-10-01 (St. Theresia Kanak-kanak Yesus)
-    if (selectedDateStr === '2026-10-01' || selectedDateStr?.replace(/-/g, '') === '20261001') {
-      return {
-        sourceType: 'imankatolik',
-        r1Source: 'Yes. 66:10-14b',
-        r1AltSource: '1 Kor. 12:31-13:13',
-        psSource: 'Mzm. 131:1,2,3',
-        r2Source: '',
-        gSource: 'Mat. 18:1-5',
-        bcoSource: '1Kor 7:25-40',
-        r1Heading: '',
-        r2Heading: '',
-        gHeading: '',
-        hasFullText: true,
-        perayaan: 'Pesta St. Teresia dr Kanak-kanak Yesus',
-        warnaLiturgi: 'Putih'
-      };
-    }
-
-    // 4. Auxiliary Universalis readings
+    // 3. Auxiliary Universalis readings
     if (universalisData) {
       const r1Source = decodeHtmlEntities(universalisData.Mass_R1?.source) || selectedLocalDay?.readings?.firstReading || '';
       const r1Heading = decodeHtmlEntities(universalisData.Mass_R1?.heading) || '';
@@ -818,6 +823,11 @@ export default function App() {
                             <span className="font-bold text-xs sm:text-sm text-[#1C2B3A] block truncate" title={readingsSummary.gSource}>
                               {readingsSummary.gSource || 'Belum tersedia'}
                             </span>
+                            {readingsSummary.gAltSource && (
+                              <p className="text-[10px] text-amber-800 mt-0.5 truncate" title={`Pilihan: ${readingsSummary.gAltSource}`}>
+                                atau {readingsSummary.gAltSource}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -833,6 +843,9 @@ export default function App() {
                                   <BookOpen className="w-3.5 h-3.5 text-[#7A2E39] shrink-0" />
                                   <span className="font-mono text-[10px] font-bold text-[#8A8378] uppercase shrink-0">Bacaan II:</span>
                                   <span className="font-semibold text-[#1C2B3A] truncate">{readingsSummary.r2Source}</span>
+                                  {readingsSummary.r2AltSource && (
+                                    <span className="text-[10px] text-[#8A8378] truncate">/ {readingsSummary.r2AltSource}</span>
+                                  )}
                                 </div>
                                 <span className="text-[10px] text-[#7A2E39] font-medium hover:underline shrink-0 ml-2">
                                   Teks &rarr;
@@ -966,20 +979,32 @@ export default function App() {
                     const isToday = (dateStr === todayStr);
                     const isActive = (selectedDateStr === dateStr);
 
+                    const imkDay = imanKatolikMonth?.days?.[dateStr];
                     const litEntri = activeMonthMap[dateStr];
                     const celebrations = litEntri?.celebrations || [];
                     const utama = celebrations[0];
 
-                    const colorInfo = utama ? infoWarna(utama.colour) : null;
-                    const isHighLit = utama ? (Number(utama.rank_num) < 3 || utama.rank === 'solemnity' || utama.rank === 'feast') : false;
-                    const tooltipTitles = celebrations.map(c => c.title).join('; ');
+                    let colorInfo = utama ? infoWarna(utama.colour) : null;
+                    if (imkDay?.warnaLiturgi) {
+                      const w = imkDay.warnaLiturgi.toLowerCase();
+                      if (w.includes('putih')) colorInfo = infoWarna('white');
+                      else if (w.includes('merah muda')) colorInfo = infoWarna('rose');
+                      else if (w.includes('merah')) colorInfo = infoWarna('red');
+                      else if (w.includes('ungu')) colorInfo = infoWarna('violet');
+                      else if (w.includes('hijau')) colorInfo = infoWarna('green');
+                    }
+
+                    const dayTitleDisplay = imkDay?.perayaan || celebrations.map(c => c.title).join('; ') || `${dayNum} ${NAMA_BULAN_FULL[currentMonth]}`;
+                    const isHighLit = imkDay?.perayaan
+                      ? (imkDay.perayaan.toLowerCase().includes('pesta') || imkDay.perayaan.toLowerCase().includes('hari raya') || imkDay.perayaan.toLowerCase().includes('perayaan wajib') || imkDay.perayaan.toLowerCase().includes('minggu'))
+                      : (utama ? (Number(utama.rank_num) < 3 || utama.rank === 'solemnity' || utama.rank === 'feast') : false);
 
                     return (
                       <button
                         type="button"
                         key={dateStr}
                         onClick={() => handleSelectDay(dateStr)}
-                        title={tooltipTitles || `${dayNum} ${NAMA_BULAN_FULL[currentMonth]}`}
+                        title={dayTitleDisplay}
                         className={`
                           aspect-square relative flex flex-col items-center justify-center rounded-xl font-semibold text-sm sm:text-base transition-all select-none cursor-pointer
                           ${isActive 

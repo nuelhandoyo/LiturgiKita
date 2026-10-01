@@ -47,6 +47,41 @@ export default function ReadingsModal({
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [showVerseNumbers, setShowVerseNumbers] = useState<boolean>(true);
 
+  // Self-managed modal data to guarantee exact matching with dateStr
+  const [modalData, setModalData] = useState<ImanKatolikDayData | null>(
+    imanKatolikData && imanKatolikData.date === dateStr ? imanKatolikData : null
+  );
+  const [isModalLoading, setIsModalLoading] = useState<boolean>(isLoading);
+
+  useEffect(() => {
+    if (!isOpen || !dateStr) return;
+
+    if (imanKatolikData && imanKatolikData.date === dateStr) {
+      setModalData(imanKatolikData);
+      setIsModalLoading(false);
+      return;
+    }
+
+    // Auto-fetch for the current dateStr if not provided or stale
+    setIsModalLoading(true);
+    let isCancelled = false;
+    fetchImanKatolikDay(dateStr)
+      .then((data) => {
+        if (!isCancelled && data && data.date === dateStr) {
+          setModalData(data);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsModalLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, dateStr, imanKatolikData]);
+
   // Sync initial tab when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -81,8 +116,8 @@ export default function ReadingsModal({
     : 'text-lg sm:text-xl leading-relaxed';
 
   // Read celebration title & color from Iman Katolik or fallback
-  const celebrationName = imanKatolikData?.perayaan || dayTitle;
-  const warnaLiturgi = imanKatolikData?.warnaLiturgi || 'Putih';
+  const celebrationName = modalData?.perayaan || dayTitle;
+  const warnaLiturgi = modalData?.warnaLiturgi || 'Putih';
 
   // Get color styles for badge
   const getColorBadge = (color: string) => {
@@ -94,12 +129,16 @@ export default function ReadingsModal({
     return 'bg-emerald-100 text-emerald-900 border-emerald-300';
   };
 
-  const readings = imanKatolikData?.readings || [];
+  const readings = modalData?.readings || [];
 
-  // Filter readings based on activeTab
-  const visibleReadings = activeTab === 'all' 
+  // Filter readings based on activeTab with graceful fallback
+  const hasMatchingTab = readings.some(r => r.id === activeTab || r.type === activeTab);
+  const effectiveTab = (activeTab === 'all' || activeTab === 'imankatolik_web' || hasMatchingTab) 
+    ? activeTab 
+    : 'all';
+  const visibleReadings = effectiveTab === 'all' 
     ? readings 
-    : readings.filter(r => r.id === activeTab || r.type === activeTab);
+    : readings.filter(r => r.id === effectiveTab || r.type === effectiveTab);
 
   // Copy plain text of current readings
   const handleCopyText = () => {
@@ -323,7 +362,7 @@ export default function ReadingsModal({
 
           {/* Modal Body / Readings Content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-            {isLoading ? (
+            {isModalLoading && readings.length === 0 ? (
               <div className="py-16 text-center space-y-3">
                 <div className="w-8 h-8 border-3 border-[#7A2E39] border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="text-sm text-[#8A8378]">Memuat bacaan liturgi resmi...</p>
@@ -341,7 +380,7 @@ export default function ReadingsModal({
                     </p>
                   </div>
                   <a
-                    href={imanKatolikData?.sourceUrl || "https://www.imankatolik.or.id/kalender.php"}
+                    href={modalData?.sourceUrl || "https://www.imankatolik.or.id/kalender.php"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7A2E39] text-white text-xs font-semibold hover:bg-[#60222B] transition-colors shrink-0"
@@ -403,7 +442,7 @@ export default function ReadingsModal({
               <span>Terjemahan Baru LAI Katolik / Leksionari KWI</span>
             </div>
             <a
-              href={imanKatolikData?.sourceUrl || "https://www.imankatolik.or.id/kalender.php"}
+              href={modalData?.sourceUrl || "https://www.imankatolik.or.id/kalender.php"}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[#7A2E39] hover:underline font-semibold"
@@ -525,8 +564,26 @@ function ReadingCard({
                 <span>{verse.text}</span>
               </p>
             ))
-          ) : (
+          ) : reading.fullText ? (
             <p className="leading-relaxed whitespace-pre-line">{reading.fullText}</p>
+          ) : (
+            <div className="py-6 px-4 bg-[#F5F2EC]/60 rounded-xl text-center space-y-2 border border-[#E8E2D6]/80 my-2">
+              <div className="w-5 h-5 border-2 border-[#7A2E39] border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-[#8A8378]">
+                Memuat naskah teks lengkap untuk <strong>{reading.reference}</strong> dari imankatolik.or.id...
+              </p>
+              {reading.query && (
+                <a
+                  href={`https://www.imankatolik.or.id/alkitabq.php?q=${encodeURIComponent(reading.query)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#7A2E39] font-semibold hover:underline"
+                >
+                  <span>Buka di Alkitab Online Iman Katolik</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
           )}
         </div>
 

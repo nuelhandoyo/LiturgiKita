@@ -265,48 +265,70 @@ async function startServer() {
   // Categorize readings from raw alkitab cell HTML
   function categorizeImanKatolikReadings(alkitabRaw: string) {
     const linkRegex = /<a href="\/alkitabq\.php\?q=([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    const items: { query: string; reference: string; index: number }[] = [];
+    const items: { prefix: string; query: string; reference: string; index: number }[] = [];
     let m: RegExpExecArray | null;
+    let lastIndex = 0;
     while ((m = linkRegex.exec(alkitabRaw)) !== null) {
+      const prefix = alkitabRaw.substring(lastIndex, m.index);
       items.push({
+        prefix,
         query: m[1],
         reference: m[2].replace(/<[^>]+>/g, '').trim(),
         index: m.index
       });
+      lastIndex = m.index + m[0].length;
     }
 
     const bcoIndex = alkitabRaw.toLowerCase().indexOf("bco");
+    let hasPassedPsalm = false;
+    let hasPassedGospel = false;
 
     return items.map((item, idx) => {
       const isBco = bcoIndex !== -1 && item.index > bcoIndex;
       const ref = item.reference.toLowerCase();
-      let type: 'bacaan_1' | 'bacaan_1_alt' | 'mazmur' | 'bacaan_2' | 'injil' | 'bco' = 'bacaan_1';
+      const prefix = item.prefix.toLowerCase();
+      const isOr = /\batau\b/.test(prefix);
+
+      let type: 'bacaan_1' | 'bacaan_1_alt' | 'mazmur' | 'bacaan_2' | 'bacaan_2_alt' | 'injil' | 'injil_alt' | 'bco' = 'bacaan_1';
       let label = 'Bacaan I';
-      let id = `r1`;
+      let id = 'r1';
 
       if (isBco) {
         type = 'bco';
         label = 'Bacaan Offisi (BcO)';
-        id = 'bco';
-      } else if (ref.startsWith('mzm') || ref.startsWith('mz')) {
+        id = idx > 0 && items[idx - 1].index > bcoIndex ? `bco_${idx + 1}` : 'bco';
+      } else if (/\bmt\b/i.test(item.prefix) || ref.startsWith('mzm') || ref.startsWith('mz')) {
         type = 'mazmur';
         label = 'Mazmur Tanggapan';
         id = 'ps';
+        hasPassedPsalm = true;
       } else if (ref.startsWith('mat') || ref.startsWith('mrk') || ref.startsWith('luk') || ref.startsWith('yoh')) {
-        type = 'injil';
-        label = 'Bacaan Injil';
-        id = 'g';
-      } else {
-        const prevHasPsalm = items.slice(0, idx).some(it => it.reference.toLowerCase().startsWith('mzm'));
-        if (prevHasPsalm) {
-          type = 'bacaan_2';
-          label = 'Bacaan II';
-          id = 'r2';
+        if (hasPassedGospel || isOr) {
+          type = 'injil_alt';
+          label = 'Bacaan Injil (Pilihan / Singkat)';
+          id = 'g_alt';
         } else {
-          if (idx > 0 && !items[idx - 1].reference.toLowerCase().startsWith('mzm')) {
+          type = 'injil';
+          label = 'Bacaan Injil';
+          id = 'g';
+          hasPassedGospel = true;
+        }
+      } else {
+        if (hasPassedPsalm) {
+          if (isOr) {
+            type = 'bacaan_2_alt';
+            label = 'Bacaan II (Pilihan)';
+            id = 'r2_alt';
+          } else {
+            type = 'bacaan_2';
+            label = 'Bacaan II';
+            id = 'r2';
+          }
+        } else {
+          if (isOr || idx > 0) {
             type = 'bacaan_1_alt';
             label = 'Bacaan I (Pilihan)';
-            id = `r1_alt`;
+            id = 'r1_alt';
           } else {
             type = 'bacaan_1';
             label = 'Bacaan I';
@@ -346,7 +368,12 @@ async function startServer() {
       while ((dayMatch = dayRegex.exec(html)) !== null) {
         const dayNum = parseInt(dayMatch[1], 10);
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-        const perayaan = dayMatch[2].replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').trim();
+        const perayaan = dayMatch[2]
+          .replace(/<br\s*\/?>/gi, ' - ')
+          .replace(/<[^>]+>/g, '')
+          .replace(/[\r\n\t]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
         const alkitabRaw = dayMatch[3].trim();
         const pakaianRaw = dayMatch[4].replace(/<[^>]+>/g, '').trim();
         
@@ -364,7 +391,9 @@ async function startServer() {
           else if (r.type === 'bacaan_1_alt') readingsSummary.r1_alt = r.reference;
           else if (r.type === 'mazmur') readingsSummary.ps = r.reference;
           else if (r.type === 'bacaan_2') readingsSummary.r2 = r.reference;
+          else if (r.type === 'bacaan_2_alt') readingsSummary.r2_alt = r.reference;
           else if (r.type === 'injil') readingsSummary.g = r.reference;
+          else if (r.type === 'injil_alt') readingsSummary.g_alt = r.reference;
           else if (r.type === 'bco') readingsSummary.bco = r.reference;
         }
 
@@ -456,22 +485,24 @@ async function startServer() {
       cleanDate = `${cleanDate.substring(0, 4)}-${cleanDate.substring(4, 6)}-${cleanDate.substring(6, 8)}`;
     }
 
-    if (imankatolikDayCache.has(cleanDate)) {
-      res.setHeader("Cache-Control", "public, max-age=86400");
-      return res.json(imankatolikDayCache.get(cleanDate));
-    }
-
     const parts = cleanDate.split('-').map(Number);
     if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
       return res.status(400).json({ error: "Invalid date format. Expected YYYY-MM-DD" });
     }
 
     const [year, month, day] = parts;
+    const normalizedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    if (imankatolikDayCache.has(normalizedDate)) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.json(imankatolikDayCache.get(normalizedDate));
+    }
+
     const monthData = await fetchImanKatolikMonthInternal(year, month);
-    const dayEntry = monthData?.days?.[cleanDate];
+    const dayEntry = monthData?.days?.[normalizedDate];
 
     if (!dayEntry) {
-      return res.status(404).json({ error: `Date ${cleanDate} not found in imankatolik calendar` });
+      return res.status(404).json({ error: `Date ${normalizedDate} not found in imankatolik calendar` });
     }
 
     // Parallel fetch for all readings verses
@@ -491,7 +522,7 @@ async function startServer() {
     );
 
     const fullDayData = {
-      date: cleanDate,
+      date: normalizedDate,
       dayNumber: day,
       perayaan: dayEntry.perayaan,
       warnaLiturgi: dayEntry.warnaLiturgi,
@@ -499,7 +530,7 @@ async function startServer() {
       sourceUrl: `https://www.imankatolik.or.id/kalender.php?b=${month}&t=${year}`
     };
 
-    imankatolikDayCache.set(cleanDate, fullDayData);
+    imankatolikDayCache.set(normalizedDate, fullDayData);
     res.setHeader("Cache-Control", "public, max-age=86400");
     return res.json(fullDayData);
   });

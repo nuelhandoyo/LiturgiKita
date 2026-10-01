@@ -7,11 +7,11 @@ export interface ImanKatolikVerse {
 }
 
 export interface ImanKatolikReadingItem {
-  id: string; // 'r1' | 'r1_alt' | 'ps' | 'r2' | 'g' | 'bco'
-  type: 'bacaan_1' | 'bacaan_1_alt' | 'mazmur' | 'bacaan_2' | 'injil' | 'bco';
-  label: string; // "Bacaan I", "Mazmur Tanggapan", "Bacaan Injil", "Bacaan Offisi (BcO)"
-  reference: string; // e.g. "Mat. 18:1-5"
-  query: string; // e.g. "Mat18:1-5;"
+  id: string; // 'r1' | 'r1_alt' | 'ps' | 'r2' | 'r2_alt' | 'g' | 'g_alt' | 'bco'
+  type: 'bacaan_1' | 'bacaan_1_alt' | 'mazmur' | 'bacaan_2' | 'bacaan_2_alt' | 'injil' | 'injil_alt' | 'bco';
+  label: string; // "Bacaan I", "Mazmur Tanggapan", "Bacaan Injil", "Bacaan Offisi (BcO)", etc.
+  reference: string; // e.g. "Kel 23:20-23a"
+  query: string; // e.g. "Kel23:20-23;"
   verses: ImanKatolikVerse[];
   fullText: string;
 }
@@ -20,7 +20,7 @@ export interface ImanKatolikDayData {
   date: string; // YYYY-MM-DD
   dayNumber: number;
   perayaan: string;
-  warnaLiturgi: string; // 'Putih' | 'Hijau' | 'Merah' | 'Ungu'
+  warnaLiturgi: string; // 'Putih' | 'Hijau' | 'Merah' | 'Ungu' | 'Merah Muda'
   readings: ImanKatolikReadingItem[];
   sourceUrl: string;
 }
@@ -30,12 +30,22 @@ export interface ImanKatolikMonthDay {
   date: string;
   perayaan: string;
   warnaLiturgi: string;
+  alkitabRaw?: string;
+  readings?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    reference: string;
+    query: string;
+  }>;
   readingsSummary: {
     r1?: string;
     r1_alt?: string;
     ps?: string;
     r2?: string;
+    r2_alt?: string;
     g?: string;
+    g_alt?: string;
     bco?: string;
   };
 }
@@ -51,33 +61,136 @@ export interface ImanKatolikMonthData {
 const dayCache = new Map<string, ImanKatolikDayData>();
 const monthCache = new Map<string, ImanKatolikMonthData>();
 
+export function normalizeDateStr(dateStr: string): string {
+  if (!dateStr) return '';
+  const clean = dateStr.replace(/[^0-9-]/g, '');
+  if (/^\d{8}$/.test(clean)) {
+    return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}`;
+  }
+  const parts = clean.split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
+  }
+  return clean;
+}
+
+/**
+ * Synthesizes a baseline ImanKatolikDayData from month entry
+ */
+function createDayFromMonthEntry(normDate: string, dayEntry: ImanKatolikMonthDay, year: number, month: number, day: number): ImanKatolikDayData {
+  const readings: ImanKatolikReadingItem[] = [];
+
+  if (dayEntry.readings && dayEntry.readings.length > 0) {
+    for (const r of dayEntry.readings) {
+      readings.push({
+        id: r.id,
+        type: r.type as any,
+        label: r.label,
+        reference: r.reference,
+        query: r.query || '',
+        verses: [],
+        fullText: ''
+      });
+    }
+  } else {
+    const s = dayEntry.readingsSummary || {};
+    if (s.r1) {
+      readings.push({ id: 'r1', type: 'bacaan_1', label: 'Bacaan I', reference: s.r1, query: '', verses: [], fullText: '' });
+    }
+    if (s.r1_alt) {
+      readings.push({ id: 'r1_alt', type: 'bacaan_1_alt', label: 'Bacaan I (Pilihan)', reference: s.r1_alt, query: '', verses: [], fullText: '' });
+    }
+    if (s.ps) {
+      readings.push({ id: 'ps', type: 'mazmur', label: 'Mazmur Tanggapan', reference: s.ps, query: '', verses: [], fullText: '' });
+    }
+    if (s.r2) {
+      readings.push({ id: 'r2', type: 'bacaan_2', label: 'Bacaan II', reference: s.r2, query: '', verses: [], fullText: '' });
+    }
+    if (s.r2_alt) {
+      readings.push({ id: 'r2_alt', type: 'bacaan_2_alt', label: 'Bacaan II (Pilihan)', reference: s.r2_alt, query: '', verses: [], fullText: '' });
+    }
+    if (s.g) {
+      readings.push({ id: 'g', type: 'injil', label: 'Bacaan Injil', reference: s.g, query: '', verses: [], fullText: '' });
+    }
+    if (s.g_alt) {
+      readings.push({ id: 'g_alt', type: 'injil_alt', label: 'Bacaan Injil (Pilihan / Singkat)', reference: s.g_alt, query: '', verses: [], fullText: '' });
+    }
+    if (s.bco) {
+      readings.push({ id: 'bco', type: 'bco', label: 'Bacaan Offisi (BcO)', reference: s.bco, query: '', verses: [], fullText: '' });
+    }
+  }
+
+  return {
+    date: normDate,
+    dayNumber: day,
+    perayaan: dayEntry.perayaan.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim(),
+    warnaLiturgi: dayEntry.warnaLiturgi,
+    readings,
+    sourceUrl: `https://www.imankatolik.or.id/kalender.php?b=${month}&t=${year}`
+  };
+}
+
 /**
  * Fetch full day reading with complete verse texts from imankatolik.or.id
  */
 export async function fetchImanKatolikDay(dateStr: string): Promise<ImanKatolikDayData | null> {
-  const cleanDate = dateStr.replace(/[^0-9-]/g, '');
-  if (dayCache.has(cleanDate)) {
-    return dayCache.get(cleanDate)!;
+  const normDate = normalizeDateStr(dateStr);
+  if (!normDate) return null;
+
+  // If already in cache with verses, return directly
+  const cached = dayCache.get(normDate);
+  if (cached && cached.readings && cached.readings.length > 0 && cached.readings.some(r => r.verses && r.verses.length > 0)) {
+    return cached;
   }
 
+  const [y, m, d] = normDate.split('-').map(Number);
+  const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+
+  // Check if month is already loaded to get instantaneous reading references
+  const monthData = monthCache.get(monthKey);
+  const dayEntry = monthData?.days?.[normDate];
+  let baselineDayData: ImanKatolikDayData | null = null;
+  if (dayEntry) {
+    baselineDayData = createDayFromMonthEntry(normDate, dayEntry, y, m, d);
+  }
+
+  // Fetch complete verses from the API endpoint
   try {
-    const res = await fetch(`/api/imankatolik/bacaan?date=${encodeURIComponent(cleanDate)}`, {
+    const res = await fetch(`/api/imankatolik/bacaan?date=${encodeURIComponent(normDate)}`, {
       headers: { Accept: 'application/json' }
     });
-    if (!res.ok) {
-      throw new Error(`Failed to load readings: HTTP ${res.status}`);
-    }
-    const data: ImanKatolikDayData = await res.json();
-    if (data && data.readings && data.readings.length > 0) {
-      dayCache.set(cleanDate, data);
-      return data;
+    if (res.ok) {
+      const data: ImanKatolikDayData = await res.json();
+      if (data && data.readings && data.readings.length > 0) {
+        dayCache.set(normDate, data);
+        return data;
+      }
     }
   } catch (err) {
-    console.warn(`[ImanKatolik] fetchImanKatolikDay error for ${dateStr}:`, err);
+    console.warn(`[ImanKatolik] fetchImanKatolikDay API error for ${normDate}:`, err);
   }
 
-  // Fallback for 2026-10-01 (St. Theresia dari Kanak-kanak Yesus)
-  if (cleanDate === '2026-10-01' || cleanDate === '20261001') {
+  // If API had issues, but we have baseline from month data, return it
+  if (baselineDayData) {
+    dayCache.set(normDate, baselineDayData);
+    return baselineDayData;
+  }
+
+  // Try fetching the month if not loaded yet
+  try {
+    const fetchedMonth = await fetchImanKatolikMonth(y, m);
+    const fetchedEntry = fetchedMonth?.days?.[normDate];
+    if (fetchedEntry) {
+      const dayData = createDayFromMonthEntry(normDate, fetchedEntry, y, m, d);
+      dayCache.set(normDate, dayData);
+      return dayData;
+    }
+  } catch (err) {
+    console.warn(`[ImanKatolik] fallback month fetch failed for ${normDate}:`, err);
+  }
+
+  // Final fallback for 2026-10-01 (St. Theresia)
+  if (normDate === '2026-10-01') {
     const fallback: ImanKatolikDayData = {
       date: '2026-10-01',
       dayNumber: 1,
@@ -156,7 +269,7 @@ export async function fetchImanKatolikDay(dateStr: string): Promise<ImanKatolikD
         }
       ]
     };
-    dayCache.set(cleanDate, fallback);
+    dayCache.set(normDate, fallback);
     return fallback;
   }
 
@@ -180,6 +293,17 @@ export async function fetchImanKatolikMonth(year: number, month: number): Promis
     const data: ImanKatolikMonthData = await res.json();
     if (data && data.days) {
       monthCache.set(key, data);
+
+      // Pre-seed dayCache with baseline readings for each day in this month
+      Object.entries(data.days).forEach(([dStr, dEntry]) => {
+        if (!dayCache.has(dStr)) {
+          const parts = dStr.split('-').map(Number);
+          const dNum = parts[2] || dEntry.day;
+          const baseline = createDayFromMonthEntry(dStr, dEntry, year, month, dNum);
+          dayCache.set(dStr, baseline);
+        }
+      });
+
       return data;
     }
   } catch (err) {
