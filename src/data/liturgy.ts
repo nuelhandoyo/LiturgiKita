@@ -241,6 +241,72 @@ const FIXED_FEASTS: { [key: string]: { name: string; grade: LiturgicalGrade; gra
     gospel: 'Yohanes 3:13-17',
     reflection: 'Salib yang dahulunya lambang penghinaan yang paling keji telah diubah oleh Kristus menjadi lambang kemenangan, penebusan, dan kasih yang tiada batas.'
   },
+  '10-01': {
+    name: 'Saint Thérèse of the Child Jesus, virgin and doctor',
+    grade: 'memorial',
+    gradeLabel: 'Peringatan Wajib',
+    color: 'white',
+    colorName: 'Putih',
+    firstReading: 'Yesaya 66:10-14c',
+    psalm: 'Mzm 131:1,2,3',
+    gospel: 'Matius 18:1-5',
+    reflection: 'Santa Theresia dari Kanak-kanak Yesus mengajarkan "Jalan Kecil" rohani: melakukan perbuatan-perbuatan kecil biasa dengan cinta yang luar biasa kepada Allah dan sesama.'
+  },
+  '10-02': {
+    name: 'Peringatan Para Malaikat Pelindung',
+    grade: 'memorial',
+    gradeLabel: 'Peringatan Wajib',
+    color: 'white',
+    colorName: 'Putih',
+    firstReading: 'Keluaran 23:20-23',
+    psalm: 'Mzm 91:1-2,3-4,5-6,10-11',
+    gospel: 'Matius 18:1-5,10',
+    reflection: 'Allah memberikan setiap kita malaikat pelindung untuk menjaga, menuntun, dan membimbing langkah hidup kita menuju keselamatan abadi.'
+  },
+  '10-04': {
+    name: 'Peringatan Santo Fransiskus dari Asisi',
+    grade: 'memorial',
+    gradeLabel: 'Peringatan Wajib',
+    color: 'white',
+    colorName: 'Putih',
+    firstReading: 'Galatia 6:14-18',
+    psalm: 'Mzm 16:1-2a,5,7-8,11',
+    gospel: 'Matius 11:25-30',
+    reflection: 'Santo Fransiskus Asisi adalah teladan kerendahan hati, kemiskinan sukarela, pembawa damai Kristus, dan cinta yang mendalam terhadap segala ciptaan Tuhan.'
+  },
+  '10-07': {
+    name: 'Peringatan Santa Perawan Maria Ratu Rosario',
+    grade: 'memorial',
+    gradeLabel: 'Peringatan Wajib',
+    color: 'white',
+    colorName: 'Putih',
+    firstReading: 'Kisah Para Rasul 1:12-14',
+    psalm: 'Lukas 1:46-55',
+    gospel: 'Lukas 1:26-38',
+    reflection: 'Doa Rosario adalah ringkasan seluruh Injil di mana kita diajak merenungkan misteri penjelmaan, karya, sengsara, dan kemuliaan Kristus bersama Bunda Maria.'
+  },
+  '10-18': {
+    name: 'Pesta Santo Lukas, Penulis Injil',
+    grade: 'feast',
+    gradeLabel: 'Pesta',
+    color: 'red',
+    colorName: 'Merah',
+    firstReading: '2 Timotius 4:10-17b',
+    psalm: 'Mzm 145:10-11,12-13ab,17-18',
+    gospel: 'Lukas 10:1-9',
+    reflection: 'Santo Lukas mencatat kerahiman Allah dan belas kasih Kristus yang begitu nyata bagi orang-orang berdosa dan mereka yang tersisihkan.'
+  },
+  '10-28': {
+    name: 'Pesta Santo Simon dan Santo Yudas, Rasul',
+    grade: 'feast',
+    gradeLabel: 'Pesta',
+    color: 'red',
+    colorName: 'Merah',
+    firstReading: 'Efesus 2:19-22',
+    psalm: 'Mzm 19:2-3,4-5',
+    gospel: 'Lukas 6:12-19',
+    reflection: 'Kedua rasul setia mewartakan Kabar Sukacita sampai menyerahkan nyawa mereka sebagai martir demi Kristus.'
+  },
   '11-01': {
     name: 'Hari Raya Semua Orang Kudus',
     grade: 'sollemnity',
